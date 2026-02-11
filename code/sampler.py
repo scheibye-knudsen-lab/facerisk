@@ -96,14 +96,7 @@ class SampleManager:
         xyz = list(zip(self.sample_xs, self.sample_ys, self.sample_keys))
         np.random.shuffle(xyz)
         self.sample_xs, self.sample_ys, self.sample_keys = zip(*xyz)
-
-    def extract_samples(self, count):
-        xs, ys, keys = self.sample_xs[:count], self.sample_ys[:count], self.sample_keys[:count]
-        self.sample_xs, self.sample_ys, self.sample_keys = self.sample_xs[count:], self.sample_ys[count:], self.sample_keys[count:]
-        spl = SampleManager()
-        spl.sample_xs, spl.sample_ys, spl.sample_keys = xs, ys, keys
-        return spl
-    
+   
     def merge_samples(self, other_sampler):
         self.sample_xs.extend(other_sampler.sample_xs)
         self.sample_ys.extend(other_sampler.sample_ys)

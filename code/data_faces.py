@@ -1,4 +1,3 @@
-import torch
 from torchvision import transforms
 import imageio
 from skimage.transform import resize
@@ -36,8 +35,6 @@ def prep_dataset(sampler, transformer, label: ModelLabel, dev_mode, mask_base_pa
             labels = [ fdata.get_survival(key) for key in keys ]
         elif label == ModelLabel.AGE:
             labels = [ fdata.get_age(key) for key in keys ]
-        elif label == ModelLabel.ADMISSION:
-            labels = [ fdata.get_readmission(key) for key in keys ]
 
         # cut ones with None, filtered out
         filter_idxs = np.array([ lab != None for lab in labels])
@@ -47,7 +44,7 @@ def prep_dataset(sampler, transformer, label: ModelLabel, dev_mode, mask_base_pa
         print(f"Reduced: {len(ys)} to {len(xs)}")
 
         # show distribution
-        if label == ModelLabel.MORTALITY or label == ModelLabel.ADMISSION:
+        if label == ModelLabel.MORTALITY:
             count_0 = sum(1 for lbl in labels if lbl[0] == 0)
             count_1 = sum(1 for lbl in labels if lbl[0] == 1)
             print(f"Number of samples by censoring: {count_0} vs {count_1}")
@@ -138,11 +135,3 @@ def train_transforms(size):
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
-
-def max_of_two_channels(channels):
-    """
-    Compute the maximum of two channels of shape (2,100,100).
-    """
-    if channels.shape != (2, 100, 100):
-        raise ValueError("Input must be of shape (2,100,100)")
-    return np.maximum(channels[0], channels[1])

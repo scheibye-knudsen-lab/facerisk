@@ -1,9 +1,7 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
-import torch.nn.functional as F
 from tqdm import tqdm
-from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
 from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
@@ -19,8 +17,6 @@ import utils
 from lifelines.utils import concordance_index
 from torch.utils.tensorboard import SummaryWriter
 
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 
 # Configuration
@@ -226,27 +222,6 @@ class SurvivalDataset(Dataset):
             'duration': self.durations[idx],
             'event': self.events[idx]
         }
-
-class LabeledDataset(Dataset):
-    """Dataset for labeled data (non-survival tasks)."""
-    
-    def __init__(self, x, y, keys):
-        self.keys = keys
-        self.features = torch.tensor(x, dtype=torch.float32)
-        self.labels = torch.tensor(y, dtype=torch.float32)
-
-    def __len__(self):
-        return len(self.keys)
-
-    def __getitem__(self, idx):
-        return {
-            'features': self.features[idx],
-            'key': self.keys[idx],
-            'label': self.labels[idx]
-        }
-
-    def get_labels(self):
-        return self.labels
 
 
 def prep_dataset(df_x, scaler=None, fit_scaler=True):

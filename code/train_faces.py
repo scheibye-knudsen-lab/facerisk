@@ -2,14 +2,9 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from sklearn.utils.class_weight import compute_class_weight
-from sklearn.metrics import roc_auc_score, precision_score, recall_score, f1_score
 from sklearn.metrics import mean_absolute_error, mean_squared_error
-import pandas as pd
 
 import numpy as np
-from PIL import Image
-
 import os
 
 from sampler import SampleManager
@@ -38,7 +33,6 @@ SIZE = 299  # Image size for xception, efficientnet
 ENSEMBLE = 10
 
 CROSS_VAL_FOLDS_LIST = range(CROSS_VAL_FOLDS)
-EXTRACT_VAL_SAMPLES = 1000
 
 # Training hyperparameters
 BATCH_SIZE = 32
@@ -306,37 +300,25 @@ def process_samples(train_sampler, val_sampler, val_fold=None):
 
 # Main execution
 if __name__ == "__main__":
-    if CROSS_VAL_FOLDS > 1:
-        for val_fold in CROSS_VAL_FOLDS_LIST:
-            # Load training folds (all except val_fold)
-            train_sampler = SampleManager()
-            for train_fold in range(CROSS_VAL_FOLDS):
-                if train_fold == val_fold:
-                    continue  # Skip held-out validation fold
+    for val_fold in CROSS_VAL_FOLDS_LIST:
+        # Load training folds (all except val_fold)
+        train_sampler = SampleManager()
+        for train_fold in range(CROSS_VAL_FOLDS):
+            if train_fold == val_fold:
+                continue  # Skip held-out validation fold
 
-                fold_path = img_path.replace("_FOLD", f"_{train_fold}")
-                sampler = SampleManager(fold_path)
-                sampler.load_samples()
-                train_sampler.merge_samples(sampler)
+            fold_path = img_path.replace("_FOLD", f"_{train_fold}")
+            sampler = SampleManager(fold_path)
+            sampler.load_samples()
+            train_sampler.merge_samples(sampler)
 
-            # Load the held-out validation fold
-            val_fold_path = img_path.replace("_FOLD", f"_{val_fold}")
-            val_sampler = SampleManager(val_fold_path)
-            val_sampler.load_samples()
+        # Load the held-out validation fold
+        val_fold_path = img_path.replace("_FOLD", f"_{val_fold}")
+        val_sampler = SampleManager(val_fold_path)
+        val_sampler.load_samples()
 
-            print(f"Fold {val_fold}: Train samples: {train_sampler.count()}, Val samples: {val_sampler.count()}")
+        print(f"Fold {val_fold}: Train samples: {train_sampler.count()}, Val samples: {val_sampler.count()}")
 
-            process_samples(train_sampler, val_sampler, val_fold)
+        process_samples(train_sampler, val_sampler, val_fold)
 
-    else:
-        train_img_path = img_path.replace("_FOLD", "")
-
-        train_sampler = SampleManager(train_img_path)
-        train_sampler.load_samples()
-
-        train_sampler.shuffle()
-        val_sampler = train_sampler.extract_samples(EXTRACT_VAL_SAMPLES)
-
-        process_samples(train_sampler, val_sampler)
-
-
+    

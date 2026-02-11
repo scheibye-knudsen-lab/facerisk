@@ -4,7 +4,6 @@ This is a placeholder for proprietary vital signs data loading functionality.
 Replace with your own data loading logic.
 """
 
-import pandas as pd
 import numpy as np
 
 

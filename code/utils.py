@@ -1,12 +1,8 @@
 from torchsampler import ImbalancedDatasetSampler
-from torch.utils.data import SubsetRandomSampler #, WeightedRandomSampler
+from torch.utils.data import SubsetRandomSampler
 import torch
 
-from lifelines import CoxPHFitter
-
 from PIL import Image
-
-from sklearn.metrics import confusion_matrix
 
 import numpy as np
 import pandas as pd
@@ -90,49 +86,6 @@ def get_training_sampler(dataset, subset_size, balance_samples, one_hot_out):
 
 
 
-def cm_breakdown(y_true, y_pred):
-    cm = confusion_matrix(y_true, y_pred)
-
-    correct_class_0 = cm[0, 0]
-    correct_class_1 = cm[1, 1]
-
-    total_class_0 = cm[0, 0] + cm[0, 1]
-    total_class_1 = cm[1, 0] + cm[1, 1]
-
-    percent_correct_class_0 = (correct_class_0 / total_class_0) * 100 if total_class_0 > 0 else 0
-    percent_correct_class_1 = (correct_class_1 / total_class_1) * 100 if total_class_1 > 0 else 0
-
-    print(f'0: {correct_class_0} of {total_class_0} ({percent_correct_class_0:.2f}%)')
-    print(f'1: {correct_class_1} of {total_class_1} ({percent_correct_class_1:.2f}%)')
-
-
-def cm_breakdown_multi(y_true, y_pred):
-    y_true_indices = np.argmax(y_true, axis=1)
-    y_pred_indices = np.argmax(y_pred, axis=1)
-    
-    num_classes = len(y_true[0])
-    
-    cm = confusion_matrix(y_true_indices, y_pred_indices, labels=range(num_classes))
-    
-    for class_idx in range(num_classes):
-        # TP = cm[class_idx, class_idx]  # True Positives
-        # total_samples = cm[class_idx, :].sum()  # Total true instances of this class        
-        # accuracy = 100.0 * TP / total_samples if total_samples > 0 else 0        
-        # print(f"{class_idx}: {TP} of {total_samples} ({accuracy:.2f}%)")
-
-        total_samples = cm[class_idx, :].sum()
-        
-        s = f"Class {class_idx} ({total_samples})> "
-        
-        for pred_class_idx in range(num_classes):
-            pred_count = cm[class_idx, pred_class_idx]
-            pred_percentage = 100.0 * pred_count / total_samples if total_samples > 0 else 0
-            s += f"  {pred_class_idx}: {pred_count} )"
-        for pred_class_idx in range(num_classes):
-            pred_count = cm[class_idx, pred_class_idx]
-            pred_percentage = 100.0 * pred_count / total_samples if total_samples > 0 else 0
-            s += f"  {pred_class_idx}: {pred_percentage:.2f}%"
-        print(s)
 
 def dump_predictions(output_file, ys, y_preds, keys):
     if isinstance(y_preds[0], np.ndarray) or isinstance(y_preds[0], list):
@@ -148,34 +101,3 @@ def dump_predictions(output_file, ys, y_preds, keys):
     df.to_csv(output_file, index=False)
 
 
-
-def cox_diff(df, fields, formula, factors):
-    cph_full = CoxPHFitter()
-
-    cph_full.fit(df[fields], duration_col='time', event_col='event', formula=formula)
-
-    full_log_likelihood = cph_full.log_likelihood_
-
-    partial_likelihood_ratios = {}
-
-    for factor in factors:
-        rbf = factors.copy()
-        rbf.remove(factor)
-        formula = "+".join(rbf)
-
-        reduced_df = df.drop(columns=[factor])
-
-        cph_reduced = CoxPHFitter()
-        cph_reduced.fit(reduced_df, duration_col='time', event_col='event', formula=formula)
-        reduced_log_likelihood = cph_reduced.log_likelihood_
-        
-        partial_likelihood_ratio = 2 * (full_log_likelihood - reduced_log_likelihood)
-        partial_likelihood_ratios[factor] = partial_likelihood_ratio
-
-    partial_likelihood_ratios_df = pd.DataFrame.from_dict(partial_likelihood_ratios, orient='index', columns=['Partial Likelihood Ratio'])
-    total_likelihood_ratio = partial_likelihood_ratios_df['Partial Likelihood Ratio'].sum()
-    partial_likelihood_ratios_df['Percent Contribution'] = (partial_likelihood_ratios_df['Partial Likelihood Ratio'] / total_likelihood_ratio) * 100
-
-    partial_likelihood_ratios_df = partial_likelihood_ratios_df.sort_values(by='Percent Contribution', ascending=False)
-
-    return partial_likelihood_ratios_df

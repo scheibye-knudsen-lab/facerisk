@@ -1,5 +1,12 @@
 # Setup Instructions
 
+## System Requirements
+
+- **Python**: 3.12.7
+- **PyTorch**: 2.4.1
+- **CUDA**: 12.1 (optional, for GPU acceleration)
+- **Tested on**: Ubuntu 22.04.5 LTS
+
 ## Quick Setup
 
 1. **Install dependencies**:
@@ -7,10 +14,11 @@
    pip install -r requirements.txt
    ```
 
-2. **Configure paths** (copy and edit):
+2. **Configure paths**:
    ```bash
-   cp .env.example .env
-   # Edit .env with your actual paths
+   export DATA_DIR=/path/to/your/data
+   export MODEL_DIR=/path/to/your/models
+   export OUT_DIR=/path/to/your/output
    ```
 
 3. **Implement data loaders** (see section below)
@@ -106,43 +114,9 @@ def prep_data_survival(df) -> pd.DataFrame:
 - Handle missing data appropriately
 - See stub file for detailed docstrings and examples
 
-### data_blood.py (Provided as stub)
-
-Implements blood test data loading:
-
-```python
-def prep_data_blood(df):
-    """Add blood test result columns to dataframe"""
-```
-
-Expected blood markers (customize for your data):
-- alanine, albumin, basophils, crp, hem_B
-- potassium, creatinine, leukocytes, lymphocytes
-- sodium, platelets
-
-### data_vitals.py (Provided as stub)
-
-Implements vital signs data loading:
-
-```python
-def prep_data_vitals(df):
-    """Add vital signs columns to dataframe"""
-```
-
-Expected vital signs (customize for your data):
-- heart_rate, bp_systolic, bp_diastolic
-- respiratory_rate, temperature
-- oxygen_saturation, gcs_score
-
-Can include summary statistics: mean, min, max, std
-
 ## Missing Module Files
 
-**IMPORTANT**: The following modules are provided as **stubs only**. You must implement them with your actual data sources:
-
-- `data_triage.py` - Triage data loading
-- `data_blood.py` - Blood test data loading
-- `data_vitals.py` - Vital signs data loading
+**IMPORTANT**: `data_triage.py` is provided as a **stub only**. You must implement it with your actual data sources.
 
 ## Data Format
 
@@ -174,12 +148,13 @@ export OUT_DIR=/path/to/output
 CUDA_VISIBLE_DEVICES=0 python code/train_faces.py
 ```
 
-### Train Unified Model
+### Generate Predictions
 ```bash
-export OUT_DIR=/path/to/output
+export DATA_DIR=/path/to/data
 export MODEL_DIR=/path/to/models
+export OUT_DIR=/path/to/output
 
-CUDA_VISIBLE_DEVICES=0 python code/train_unified.py
+python code/predict_faces.py
 ```
 
 ## Configuration
@@ -188,18 +163,9 @@ Edit the configuration variables at the top of each training script:
 
 ### train_faces.py
 - `IMG_SET`: Dataset identifier (e.g., 'cv3')
-- `CROSS_VAL_FOLDS`: Number of cross-validation folds
 - `LABEL`: Target variable (AGE or MORTALITY)
 - `MODEL`: Model architecture ('xception', 'efficientnet_b3')
 - `SIZE`: Input image size (299)
 - `BATCH_SIZE`: Batch size for training (32)
 - `NUM_EPOCHS`: Number of training epochs (50)
 - `LEARNING_RATE`: Learning rate (1e-3)
-
-### train_unified.py
-- `USE_AGE_SEX`: Include age/sex features (1/0)
-- `USE_FACE`: Include face predictions (1/0)
-- `USE_BLOOD`: Include blood test data (1/0)
-- `USE_VITALS`: Include vital signs (1/0)
-- `USE_PRED_AGE`: Include predicted age (1/0)
-- `LABEL`: Target variable ('AGE' or 'HAZARD')

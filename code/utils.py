@@ -1,4 +1,3 @@
-from torchsampler import ImbalancedDatasetSampler
 from torch.utils.data import SubsetRandomSampler
 import torch
 
@@ -61,7 +60,7 @@ class SurvivalImageDataset(torch.utils.data.Dataset):
         return item
 
     def get_labels(self):
-        return self.durations+self.events*1000
+        return self.durations+self.censored*1000
         
 
 def get_training_sampler(dataset, subset_size, balance_samples, one_hot_out):
@@ -75,6 +74,7 @@ def get_training_sampler(dataset, subset_size, balance_samples, one_hot_out):
             return SubsetRandomSampler(indices)
         
         else:
+            from torchsampler import ImbalancedDatasetSampler
             # balance on first state only -- EXPAND LATER
             labs = [ np.sum(v) for v in dataset.get_labels().numpy() ]
             return ImbalancedDatasetSampler(dataset, labels=labs, num_samples=subset_size)

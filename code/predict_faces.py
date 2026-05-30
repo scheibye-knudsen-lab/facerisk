@@ -6,6 +6,7 @@ from tqdm import tqdm
 import pandas as pd
 import numpy as np
 import os
+import sys
 
 from sampler import SampleManager
 
@@ -17,12 +18,11 @@ from data_faces import ModelLabel
 
 # Configuration
 DEV_MODE = 0
-ENSEMBLE = 10
+ENSEMBLE = 1
 EXTRACT_FEATURES = 0
 
 # Dataset configuration
-IMG_SET = "cv3"
-CROSS_VAL_FOLDS = 3
+IMG_SET = "faces7"
 KEY = ""
 
 # Model configuration
@@ -37,15 +37,7 @@ OUT_DIR = os.environ.get('OUT_DIR', './output')
 OUT_BASE = f'{OUT_DIR}/{IMG_SET}/'
 IMAGE_SRC = 'faces5'
 
-if CROSS_VAL_FOLDS > 1:
-    img_path = f'{DATA_DIR}/{IMAGE_SRC}-train-{IMG_SET}_FOLD.pickle'
-else:
-    img_path = f'{DATA_DIR}/{IMAGE_SRC}-val-{IMG_SET}.pickle'
-
 MODEL_WEIGHTS_PATH = f'{MODEL_DIR}/model_weights-KEY.pth'
-
-# Training options
-PREDICT_TRAINING = 0
 
 # Model settings
 SIZE = 299  # Image size for xception, efficientnet
@@ -142,18 +134,18 @@ def predict_data(dataset, model, device, output_file):
 
 def process_samples(sampler, val_fold=None):
     """Process samples for prediction across ensemble models."""
-    key = f"{str(LABEL).replace('ModelLabel.','')}-{MODEL}-{IMG_SET}-{KEY}"
+    key_suffix = f"-{KEY}" if KEY else ""
+    key = f"{str(LABEL).replace('ModelLabel.','')}-{MODEL}-{IMG_SET}{key_suffix}"
     print("***********", key)
     
     for ens_idx in range(ENSEMBLE):
         model = model_faces.get_model(MODEL, OUT_BINS, DROPOUT_RATE)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        cvpath = f"-fold{val_fold}" if CROSS_VAL_FOLDS > 1 else ""
         enspath = f"-e{ens_idx}" if ENSEMBLE > 1 else ""
-        mwpath = MODEL_WEIGHTS_PATH.replace("KEY", f'{key}{cvpath}{enspath}')
+        mwpath = MODEL_WEIGHTS_PATH.replace("KEY", f'{key}{enspath}')
         print("Loading model weights from", mwpath)
-        model.load_state_dict(torch.load(mwpath, map_location=device))
+        model.load_state_dict(torch.load(mwpath, map_location=device, weights_only=True))
         model.to(device)
 
         if COLOR_OFFSETS:
@@ -172,7 +164,7 @@ def process_samples(sampler, val_fold=None):
 
                         extra_code = f"{EXTRA_OUT_CODE}+" + "+".join(map(str, rgb_shift))
                         output_file = f'{OUT_BASE}/out-{key}-{EXTRACT_FEATURES}{extra_code}.csv'
-
+                        os.makedirs(OUT_BASE, exist_ok=True)
                         predict_data(dataset, model, device, output_file)
 
         else:
@@ -186,45 +178,17 @@ def process_samples(sampler, val_fold=None):
                 train_mode=False
             )
 
-            trainpath = "-train" if PREDICT_TRAINING else ""
-            output_file = f'{OUT_BASE}/out-{key}-{EXTRACT_FEATURES}{EXTRA_OUT_CODE}{cvpath}{trainpath}{enspath}.csv'
-
+            output_file = f'{OUT_BASE}/out-{key}-{EXTRACT_FEATURES}{EXTRA_OUT_CODE}{enspath}.csv'
+            os.makedirs(OUT_BASE, exist_ok=True)
             print("Generating:", output_file)
             predict_data(dataset, model, device, output_file)
 
 
 # Main execution
 if __name__ == "__main__":
-    if CROSS_VAL_FOLDS > 1:
-        for val_fold in range(CROSS_VAL_FOLDS):
-
-            if PREDICT_TRAINING:
-                # Predict training data for val_fold using val_fold model
-                train_sampler = None
-                for train_fold in range(CROSS_VAL_FOLDS):
-                    if train_fold == val_fold:
-                        continue
-
-                    fold_path = img_path.replace("_FOLD", f"_{train_fold}")
-                    sampler = SampleManager(fold_path)
-                    sampler.load_samples()
-
-                    if train_sampler is None:
-                        train_sampler = sampler
-                    else:
-                        train_sampler.merge_samples(sampler)
-
-                process_samples(train_sampler, val_fold)
-            else:
-                fold_path = img_path.replace("_FOLD", f"_{val_fold}")
-                sampler = SampleManager(fold_path)
-                sampler.load_samples()
-                process_samples(sampler, val_fold)
-
-    else:
-        img_path = img_path.replace("_FOLD", "")
-        sampler = SampleManager(img_path)
-        sampler.load_samples()
-        process_samples(sampler)
+    img_path = sys.argv[1] if len(sys.argv) > 1 else f'{DATA_DIR}/{IMAGE_SRC}-val-{IMG_SET}.pickle'
+    sampler = SampleManager(img_path)
+    sampler.load_samples()
+    process_samples(sampler)
 
 

@@ -73,19 +73,6 @@ class TriageData:
         """
         # TODO: Implement age lookup
         return None
-    
-    def get_readmission(self, key):
-        """
-        Get readmission status for a patient.
-        
-        Args:
-            key: Patient/image identifier
-            
-        Returns:
-            tuple or None: (censored, duration) for readmission outcome
-        """
-        # TODO: Implement readmission data lookup
-        return None
 
 
 def prep_data_facts(df):

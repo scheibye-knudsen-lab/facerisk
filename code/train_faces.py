@@ -21,8 +21,7 @@ from lifelines.utils import concordance_index
 DEV_MODE = 0
 
 # Dataset configuration
-IMG_SET = "cv3"
-CROSS_VAL_FOLDS = 3
+IMG_SET = "wiki"
 
 # Model configuration
 LABEL = ModelLabel.MORTALITY
@@ -31,8 +30,6 @@ MODEL = 'efficientnet_b3'
 KEY = 'v1'
 SIZE = 299  # Image size for xception, efficientnet
 ENSEMBLE = 10
-
-CROSS_VAL_FOLDS_LIST = range(CROSS_VAL_FOLDS)
 
 # Training hyperparameters
 BATCH_SIZE = 32
@@ -54,9 +51,7 @@ DATA_DIR = os.environ.get('DATA_DIR', './data')
 MODEL_DIR = os.environ.get('MODEL_DIR', './models')
 OUT_DIR = os.environ.get('OUT_DIR', './output')
 
-img_path = f'{DATA_DIR}/{IMAGE_SRC}-train-{IMG_SET}_FOLD.pickle'
 MODEL_WEIGHTS_PATH = f'{MODEL_DIR}/model_weights-KEY.pth'
-OUT_BASE = f'{OUT_DIR}/{IMG_SET}/'
 
 # Label-specific settings
 REGRESSION = 0
@@ -67,6 +62,9 @@ if LABEL == ModelLabel.AGE:
     REGRESSION = 1
 elif LABEL == ModelLabel.MORTALITY:
     SURVIVAL = 1
+
+train_img_path = f'{DATA_DIR}/{IMAGE_SRC}-train-{IMG_SET}.pickle'
+val_img_path = f'{DATA_DIR}/{IMAGE_SRC}-val-{IMG_SET}.pickle'
 
 
 #
@@ -237,7 +235,7 @@ def do_epoch(epoch, ens_idx, train_dataset, val_dataset, model, device, last_sav
         val_pred = [k[0] for k in val_pred]
 
         mae = mean_absolute_error(val_true, val_pred)
-        rmse = mean_squared_error(val_true, val_pred, squared=False)
+        rmse = np.sqrt(mean_squared_error(val_true, val_pred))
         print(f'Epoch [{epoch+1}/{NUM_EPOCHS}], Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}')
         print(f'... Val MAE: {mae:.4f}, RMSE: {rmse:.4f}')
 
@@ -268,9 +266,9 @@ def do_epoch(epoch, ens_idx, train_dataset, val_dataset, model, device, last_sav
     # Save model at last epoch (to avoid leakage in CV predictions)
     if epoch == NUM_EPOCHS - 1:
         print("*** SAVING FINAL MODEL (last epoch)")
-        cvpath = f"-fold{val_fold}" if CROSS_VAL_FOLDS > 1 else ""
         enspath = f"-e{ens_idx}" if ENSEMBLE > 1 else ""
-        torch.save(model.state_dict(), MODEL_WEIGHTS_PATH.replace("KEY", f'{key}{cvpath}{enspath}'))
+        os.makedirs(MODEL_DIR, exist_ok=True)
+        torch.save(model.state_dict(), MODEL_WEIGHTS_PATH.replace("KEY", f'{key}{enspath}'))
 
     print()
 
@@ -300,25 +298,11 @@ def process_samples(train_sampler, val_sampler, val_fold=None):
 
 # Main execution
 if __name__ == "__main__":
-    for val_fold in CROSS_VAL_FOLDS_LIST:
-        # Load training folds (all except val_fold)
-        train_sampler = SampleManager()
-        for train_fold in range(CROSS_VAL_FOLDS):
-            if train_fold == val_fold:
-                continue  # Skip held-out validation fold
+    train_sampler = SampleManager(train_img_path)
+    train_sampler.load_samples()
 
-            fold_path = img_path.replace("_FOLD", f"_{train_fold}")
-            sampler = SampleManager(fold_path)
-            sampler.load_samples()
-            train_sampler.merge_samples(sampler)
+    val_sampler = SampleManager(val_img_path)
+    val_sampler.load_samples()
 
-        # Load the held-out validation fold
-        val_fold_path = img_path.replace("_FOLD", f"_{val_fold}")
-        val_sampler = SampleManager(val_fold_path)
-        val_sampler.load_samples()
-
-        print(f"Fold {val_fold}: Train samples: {train_sampler.count()}, Val samples: {val_sampler.count()}")
-
-        process_samples(train_sampler, val_sampler, val_fold)
-
+    process_samples(train_sampler, val_sampler)
     

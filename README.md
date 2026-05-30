@@ -1,10 +1,10 @@
-# FaceScore
+# FaceRisk
 
 Deep learning models for clinical prediction from facial images, combining computer vision with survival analysis and clinical data.
 
 ## Overview
 
-FaceScore trains neural networks to predict clinical outcomes (age, mortality risk) from facial images. The framework supports:
+FaceRisk trains neural networks to predict clinical outcomes (age, mortality risk) from facial images. The framework supports:
 
 - **Face-based models**: Image classification/regression using CNNs (EfficientNet, Xception)
 - **Survival analysis**: Cox proportional hazards models for time-to-event prediction
@@ -18,14 +18,14 @@ FaceScore trains neural networks to predict clinical outcomes (age, mortality ri
 
 ```bash
 # Clone the repository
-git clone https://github.com/indra-icmm/facescore.git
-cd facescore
+git clone https://github.com/scheibye-knudsen-lab/facerisk.git
+cd facerisk
 
 # Create virtual environment (recommended)
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Install dependencies
+# Install dependencies (typical install time: ~5 minutes)
 pip install -r requirements.txt
 ```
 
@@ -53,27 +53,28 @@ Generate predictions:
 python code/predict_faces.py
 ```
 
-Train unified model combining face predictions with clinical data:
+### Demo
+
+Run prediction on the included sample data (100 images, requires trained model weights):
 
 ```bash
-python code/train_unified.py
+python code/predict_faces.py sample/faces_100.pickle
 ```
 
 ## Project Structure
 
 ```
-facescore/
+facerisk/
 ├── code/
 │   ├── data_faces.py        # Image dataset preparation and transforms
 │   ├── model_faces.py       # Neural network architectures
 │   ├── train_faces.py       # Training script for face models
 │   ├── predict_faces.py     # Inference script
-│   ├── train_unified.py     # Training for unified models
 │   ├── sampler.py           # Data sampling utilities
 │   ├── utils.py             # Helper functions and custom datasets
-│   ├── data_triage.py       # Clinical data interface (stub)
-│   ├── data_blood.py        # Blood test data interface (stub)
-│   └── data_vitals.py       # Vital signs data interface (stub)
+│   └── data_triage.py       # Clinical data interface (stub)
+├── sample/
+│   └── faces_100.pickle     # Sample data for testing
 ├── requirements.txt         # Python dependencies
 ├── README.md               # This file
 └── SETUP.md               # Detailed setup instructions
@@ -98,8 +99,6 @@ Images should be preprocessed and stored as pickle files with the format:
 You must implement the stub files to load your clinical data:
 
 - **data_triage.py**: Patient demographics, outcomes, survival data
-- **data_blood.py**: Laboratory test results
-- **data_vitals.py**: Vital signs measurements
 
 See [SETUP.md](SETUP.md) for detailed data format specifications.
 
@@ -131,8 +130,7 @@ Edit configuration variables at the top of training scripts:
 ### train_faces.py
 
 ```python
-IMG_SET = "cv3"                    # Dataset identifier
-CROSS_VAL_FOLDS = 3               # K-fold cross-validation
+IMG_SET = "wiki"                   # Dataset identifier
 LABEL = ModelLabel.MORTALITY      # AGE or MORTALITY
 MODEL = 'efficientnet_b3'         # Model architecture
 SIZE = 299                        # Input image size
@@ -142,31 +140,23 @@ LEARNING_RATE = 1e-3             # Learning rate
 ENSEMBLE = 10                     # Number of ensemble models
 ```
 
-### train_unified.py
-
-```python
-USE_AGE_SEX = 1      # Include demographics
-USE_FACE = 1         # Include face predictions
-USE_BLOOD = 1        # Include blood tests
-USE_VITALS = 1       # Include vital signs
-USE_PRED_AGE = 1     # Include predicted age
-```
-
 ## Output
 
 Models save:
 - **Trained weights**: `{MODEL_DIR}/model_weights-{KEY}.pth`
 - **Predictions**: `{OUT_DIR}/{IMG_SET}/out-{KEY}.csv`
-- **TensorBoard logs**: `./runs/` (unified model only)
 
 Prediction CSV format:
 ```csv
-key,true,pred
-patient001.jpg,[0 100],0.234
-patient002.jpg,[1 45],-0.156
+label,pred,key
+[0. 0.],-0.968469,/euler/indrah/facerisk/wiki_imdb/wiki_crop/23/1507423_1969-01-02_2004.jpg
+[0. 0.],-1.1902257,/euler/indrah/facerisk/wiki_imdb/wiki_crop/59/330859_1965-05-24_2009.jpg
+[0. 0.],-0.15366133,/euler/indrah/facerisk/wiki_imdb/wiki_crop/35/32935935_1935-06-10_2005.jpg
+[0. 0.],-2.6203792,/euler/indrah/facerisk/wiki_imdb/wiki_crop/56/1628256_1983-12-06_2008.jpg
+[0. 0.],-0.7129433,/euler/indrah/facerisk/wiki_imdb/wiki_crop/18/6901318_1987-11-30_2012.jpg
 ```
 
-For survival models, `true` contains `[censored, duration]`.
+For survival models, `label` contains `[censored, duration]`. The `pred` column is the log hazard ratio from the risk model; more negative values indicate lower predicted mortality risk.
 
 ## GPU Support
 
@@ -181,16 +171,17 @@ CUDA_VISIBLE_DEVICES=0,1 python code/train_faces.py
 If you use this code in your research, please cite:
 
 ```bibtex
-@software{facescore2026,
-  title={FaceScore: Clinical Prediction from Facial Images},
+@software{facerisk2026,
+  title={FaceRisk: Clinical Prediction from Facial Images},
   author={Indra Heckenbach},
   year={2026},
-  url={https://github.com/indra-icmm/facescore}
+  url={https://github.com/scheibye-knudsen-lab/facerisk}
 }
 ```
 
 ## License
 
+MIT License — Copyright (c) 2026 Indra Heckenbach
 
 ## Contributing
 

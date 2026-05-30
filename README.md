@@ -7,9 +7,6 @@ Deep learning models for clinical prediction from facial images, combining compu
 FaceRisk trains neural networks to predict clinical outcomes (age, mortality risk) from facial images. The framework supports:
 
 - **Face-based models**: Image classification/regression using CNNs (EfficientNet, Xception)
-- **Survival analysis**: Cox proportional hazards models for time-to-event prediction
-- **Unified models**: Integration of image predictions with clinical data (vitals, blood tests)
-- **Cross-validation**: Built-in support for k-fold cross-validation
 - **Ensemble learning**: Multiple model training for robust predictions
 
 ## Quick Start
